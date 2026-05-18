@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package contextmesh.v1;
+
+option go_package = "github.com/Priyasharma620064/contextmesh/backend/proto;proto";
+
+// ContextMeshService orchestrates agents, manages repository retrieval configurations,
+// runs the benchmark evaluation suite, and validates Kubernetes manifests.
+service ContextMeshService {
+  // ParseAgentsConfig validates and returns the parsed representation of an AGENTS.md file.
+  rpc ParseAgentsConfig(ParseAgentsConfigRequest) returns (ParseAgentsConfigResponse);
+
+  // TriggerSync initiates a branch-aware and release-aware sync of a repository.
+  rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
+
+  // GetSyncStatus returns indexing status and delta metrics for repositories.
+  rpc GetSyncStatus(GetSyncStatusRequest) returns (GetSyncStatusResponse);
+
+  // QueryContext runs retrieval across agents using active configurations.
+  rpc QueryContext(QueryContextRequest) returns (QueryContextResponse);
+
+  // RunBenchmark executes a retrieval benchmark run using pre-defined gold-standard queries.
+  rpc RunBenchmark(RunBenchmarkRequest) returns (RunBenchmarkResponse);
+
+  // ValidateK8sManifest scans Kubernetes manifests for outdated/deprecated APIs and CRD compliance.
+  rpc ValidateK8sManifest(ValidateK8sManifestRequest) returns (ValidateK8sManifestResponse);
+}
+
+// AGENTS.md Config Definitions
+message ScopedPolicy {
+  string branch = 1;
+  string release = 2;
+  bool citation_required = 3;
+  repeated string prioritize_paths = 4;
+  repeated string ignore_paths = 5;
+}
+
+message AgentsConfig {
+  string repo_url = 1;
+  repeated string prioritize = 2;
+  repeated string ignore = 3;
+  map<string, bool> policies = 4;
+  repeated ScopedPolicy scoped_policies = 5;
+}
+
+message ParseAgentsConfigRequest {
+  string content = 1;
+}
+
+message ParseAgentsConfigResponse {
+  bool valid = 1;
+  string error_message = 2;
+  AgentsConfig parsed_config = 3;
+}
+
+// Ingestion & Sync Definitions
+message TriggerSyncRequest {
+  string repo_url = 1;
+  string branch = 2;
+  string release = 3;
+}
+
+message TriggerSyncResponse {
+  string sync_id = 1;
+  string message = 2;
+}
+
+message RepositorySyncState {
+  string repo_url = 1;
+  string branch = 2;
+  string last_commit_hash = 3;
+  int64 total_chunks_indexed = 4;
+  int64 files_changed = 5;
+  int64 files_unchanged = 6;
+  string sync_status = 7; // "SYNCING", "COMPLETED", "FAILED"
+  string updated_at = 8;
+}
+
+message GetSyncStatusRequest {
+  string repo_url = 1;
+}
+
+message GetSyncStatusResponse {
+  repeated RepositorySyncState sync_states = 1;
+}
+
+// Retrieval & Pipeline Definitions
+message QueryContextRequest {
+  string query = 1;
+  string repo_url = 2;
+  string branch = 3;
+  int32 max_tokens = 4;
+  bool bypass_cache = 5;
+}
+
+message TextChunk {
+  string id = 1;
+  string text = 2;
+  string filepath = 3;
+  int32 start_line = 4;
+  int32 end_line = 5;
+  double score = 6;
+  map<string, string> metadata = 7;
+}
+
+message QueryContextResponse {
+  string compiled_context = 1;
+  repeated TextChunk retrieved_chunks = 2;
+  int32 total_tokens = 3;
+  double compression_ratio = 4;
+  double overall_relevance_score = 5;
+}
+
+// Retrieval Benchmark Definitions
+message RunBenchmarkRequest {
+  string suite_name = 1;
+  string repo_url = 2;
+  string branch = 3;
+}
+
+message BenchmarkMetrics {
+  double precision_at_k = 1;  // Precision at top K results
+  double recall_at_k = 2;     // Recall at top K results
+  double hallucination_risk = 3; // Risk score [0.0 - 1.0] of model hallucinating based on coverage
+  double chunk_quality = 4;   // Semantic density & structure rating
+  double citation_confidence = 5; // Verifiability of cited sources
+  double latency_ms = 6;
+}
+
+message SideBySideComparison {
+  string strategy_a_name = 1;
+  BenchmarkMetrics metrics_a = 2;
+  repeated TextChunk chunks_a = 3;
+
+  string strategy_b_name = 4;
+  BenchmarkMetrics metrics_b = 5;
+  repeated TextChunk chunks_b = 6;
+}
+
+message RunBenchmarkResponse {
+  string run_id = 1;
+  string suite_name = 2;
+  BenchmarkMetrics average_metrics = 3;
+  repeated SideBySideComparison comparisons = 4;
+  string completed_at = 5;
+}
+
+// Kubernetes Manifest Check Definitions
+message K8sViolation {
+  string file_path = 1;
+  string api_version = 2;
+  string kind = 3;
+  string severity = 4; // "CRITICAL", "WARNING", "INFO"
+  string message = 5;
+  string suggested_fix = 6;
+}
+
+message ValidateK8sManifestRequest {
+  string manifest_content = 1;
+  string file_path = 2;
+  string target_k8s_version = 3; // e.g. "v1.28"
+}
+
+message ValidateK8sManifestResponse {
+  bool is_valid = 1;
+  repeated K8sViolation violations = 2;
+}
