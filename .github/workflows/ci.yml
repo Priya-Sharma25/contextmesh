@@ -1,0 +1,51 @@
+name: ContextMesh Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-ci:
+    name: Go Backend CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go Runtime
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install Dependencies
+        run: cd backend && go mod download
+
+      - name: Run Backend Unit Tests
+        run: cd backend && go test -v ./...
+
+      - name: Compile Backend Server Binary
+        run: cd backend && go build -o bin/server cmd/server/main.go
+
+  frontend-ci:
+    name: Next.js Frontend CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: cd frontend && npm ci --legacy-peer-deps
+
+      - name: Run Production Bundle Build
+        run: cd frontend && npm run build

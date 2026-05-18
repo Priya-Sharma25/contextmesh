@@ -1,0 +1,6 @@
+apiVersion: v2
+name: contextmesh
+description: A Helm chart to deploy ContextMesh - Agentic Context Engineering Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
