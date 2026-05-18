@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-JSON--RPC--2.0-blue)](https://modelcontextprotocol.io)
 
-ContextMesh is a premium **Agentic Context Engineering Platform** that orchestrates autonomous, cooperative agents for documentation retrieval, schema validation, multi-repository synchronization, and AI-ready knowledge compilation across cloud-native OSS ecosystems.
+ContextMesh is an **Agentic Context Engineering Platform** that orchestrates cooperative agents for documentation retrieval, schema validation, multi-repository synchronization, and AI-ready knowledge compilation across cloud-native OSS ecosystems.
 
 ---
 
@@ -17,7 +17,7 @@ Modern Cloud-Native open-source ecosystems (Kubernetes, Helm, Volcano, OpenKruis
 3. **Unvalidated Citations**: AI systems hallucinate answers due to a lack of precise line-level context citation confidence and quality checks.
 
 ### The Goal
-ContextMesh bridges the gap between OSS documentation and AI-assisted engineering by placing repository-level **AGENTS.md behavior rules** in charge of a high-performance semantic retrieval and validation network.
+ContextMesh bridges the gap between OSS documentation and AI-assisted engineering by placing repository-level **AGENTS.md behavior rules** in charge of a semantic retrieval and validation network.
 
 ```mermaid
 graph TD
@@ -40,7 +40,7 @@ graph TD
 
     subgraph Telemetry [caching & Metrics]
         Orchestrator -->|Lookup| Redis{Redis Cache Wrapper}
-        Redis -->|Hit| Return[Ultra-low Latency Response]
+        Redis -->|Hit| Return[Low Latency Response]
         Redis -->|Miss| DB
     end
 
@@ -48,6 +48,23 @@ graph TD
     Validator -->|Flags API Drift| Output[Compiled AI Prompt Context]
     Summarizer -->|Structural Map| Output
 ```
+
+---
+
+## 💡 Why ContextMesh Exists: Example Workflow
+
+A typical workflow demonstrates how ContextMesh coordinates documentation context dynamically:
+
+**The Goal**: A developer queries:
+> *"How does CloneSet rolling update work in OpenKruise v1.6?"*
+
+**The ContextMesh Execution**:
+1. **Multi-Repo Sync**: The Sync Agent fetches and processes `openkruise/kruise` docs on branch `release-1.6`.
+2. **Behavior Policy Enforcement**: The Retriever Agent reads the repository-level `AGENTS.md` rules and dynamically applies a **+25% relevance boost** to any matching paths under `/docs/core/` while filtering out files matching `*.tmp` or `/temp/` paths.
+3. **Hierarchical Chunking**: The Markdown Chunker segments `docs/core/cloneset.md` into precise chunks, preserving parent heading hierarchies (`Core Platform > Controller > CloneSet`).
+4. **Manifest Schema Audit**: The Validation Agent scans YAML manifests in the chunk, detects a deprecated apiVersion (e.g., `apps.kruise.io/v1alpha1` Deployments), flags the drift, and injects a structured **suggested fix** directly into the context metadata.
+5. **Token Compression**: The Budget Compressor scores the resolved chunks, ranks them, and drops lower-priority blocks to compress the context strictly within the requested `max_tokens` (4,000) ceiling.
+6. **AI-Ready Prompt Generation**: The Orchestrator compiles the final context prompt, complete with verified XML citations (`CIT-xxxxxx`), and returns the optimized package to the LLM.
 
 ---
 
@@ -71,7 +88,7 @@ Simulates Git webhook ingestion with branch-aware and release-aware delta update
 ### 1. `AGENTS.md` Parser & Behavior Engine
 Located in [backend/pkg/parser](file:///home/priya-sharma/contextmesh/backend/pkg/parser), this compiler reads repository-level YAML-like rule sets, resolves global ignore overrides, and maps scoped branch priorities (e.g., boosting `docs/core/` matching on `main` branch by 25%).
 
-### 2. Multi-Agent Orchestrator
+### 2. Parallel Agent Orchestrator
 Located in [backend/pkg/agents](file:///home/priya-sharma/contextmesh/backend/pkg/agents), this layer runs Retriever, Validator, and Summarizer routines concurrently inside Go goroutines using channel sync gates and strict `context.WithTimeout` boundaries (4.0s) to prevent resource blocking.
 
 ### 3. Context Engineering Pipeline
@@ -88,7 +105,29 @@ Exposes platform engines as standardized AI tools under `/mcp` complying with th
 - `run_benchmarks`: Evaluation test runs.
 
 ### 6. Storage & Caching Layer
-Located in [backend/pkg/storage](file:///home/priya-sharma/contextmesh/backend/pkg/storage), this specifies PostgreSQL `pgvector` schemas with high-performance `HNSW` indices, coupled with a fast **Redis Key-Value Caching wrapper** that cuts query response times from 18ms to ~2ms.
+Located in [backend/pkg/storage](file:///home/priya-sharma/contextmesh/backend/pkg/storage), this specifies PostgreSQL `pgvector` schemas with `HNSW` indices, coupled with a fast **Redis Key-Value Caching wrapper** that reduced average query latency during local benchmark runs.
+
+---
+
+## 📊 Telemetry & Dashboards Visuals
+
+Below are the default visual panels of the retrieval evaluation interface:
+
+### 1. Main Telemetry Dashboard
+Displays live query telemetry, active branch states, token sizes, and structured LLM prompt context views.
+![Main Telemetry Dashboard Panel](docs/screenshots/dashboard_ui.svg)
+
+### 2. Retrieval Strategy Comparison
+Side-by-side comparative analyzer showing Precision@K, Recall@K, and Latency scores between the Hierarchical Chunker and Naive Flat splitting.
+![Retrieval Comparison Panel](docs/screenshots/retrieval_comparison.svg)
+
+### 3. AGENTS.md Config AST Playground
+Runtime editor that compiles behavior configuration rules and displays active branch-scoped priorities.
+![AGENTS.md Playground Panel](docs/screenshots/agents_playground.svg)
+
+### 4. Kubernetes API Drift Diagnostics
+Diagnostics log highlighting deprecated API schemas with instant structural self-healing fixes.
+![Kubernetes Schema Validator Panel](docs/screenshots/k8s_validator.svg)
 
 ---
 
@@ -142,5 +181,5 @@ This repository was constructed with rigorous engineering hygiene over 7 profess
 3. **Commit 3: Multi-Agent Orchestration & Multi-Repo Sync**: Implemented concurrent Retriever, Validator, Summarizer, and Sync routines.
 4. **Commit 4: Context Engineering Pipeline & Kubernetes Intelligence**: Created the semantic Markdown chunker and Kubernetes deprecated API checker.
 5. **Commit 5: Benchmark Suite, MCP Tool Server & Storage Layer**: Deployed pgvector vector DB designs, MCP JSON-RPC, and Redis wrappers.
-6. **Commit 6: Premium Next.js Retrieval Evaluation Dashboard**: Designed the dark-mode dashboard console utilizing React.
+6. **Commit 6: Next.js Retrieval Evaluation Dashboard**: Designed the dark-mode dashboard console utilizing React.
 7. **Commit 7: Deployment Configuration & CI/CD Workflows**: Configured Docker, Helm charts, CI testing pipelines, and project sheets.
