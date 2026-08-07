@@ -109,28 +109,6 @@ Located in [backend/pkg/storage](file:///home/priya-sharma/contextmesh/backend/p
 
 ---
 
-## 📊 Telemetry & Dashboards Visuals
-
-Below are the default visual panels of the retrieval evaluation interface:
-
-### 1. Main Telemetry Dashboard
-Displays live query telemetry, active branch states, token sizes, and structured LLM prompt context views.
-![Main Telemetry Dashboard Panel](docs/screenshots/dashboard_ui.svg)
-
-### 2. Retrieval Strategy Comparison
-Side-by-side comparative analyzer showing Precision@K, Recall@K, and Latency scores between the Hierarchical Chunker and Naive Flat splitting.
-![Retrieval Comparison Panel](docs/screenshots/retrieval_comparison.svg)
-
-### 3. AGENTS.md Config AST Playground
-Runtime editor that compiles behavior configuration rules and displays active branch-scoped priorities.
-![AGENTS.md Playground Panel](docs/screenshots/agents_playground.svg)
-
-### 4. Kubernetes API Drift Diagnostics
-Diagnostics log highlighting deprecated API schemas with instant structural self-healing fixes.
-![Kubernetes Schema Validator Panel](docs/screenshots/k8s_validator.svg)
-
----
-
 ## 💻 Tech Stack & Local Execution
 
 ### Directory Layout
@@ -170,16 +148,3 @@ npm run build
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the telemetry dashboard!
-
----
-
-## 📈 The 7-Commit Discipline Progression
-
-This repository was constructed with rigorous engineering hygiene over 7 professional steps:
-1. **Commit 1: Repository Foundation & Core Types**: Structured the monorepo workspace and compiled gRPC Protobuf contracts.
-2. **Commit 2: AGENTS.md Runtime Engine & AST Parser**: Constructed the AST parsing rules and branch priority overrides.
-3. **Commit 3: Multi-Agent Orchestration & Multi-Repo Sync**: Implemented concurrent Retriever, Validator, Summarizer, and Sync routines.
-4. **Commit 4: Context Engineering Pipeline & Kubernetes Intelligence**: Created the semantic Markdown chunker and Kubernetes deprecated API checker.
-5. **Commit 5: Benchmark Suite, MCP Tool Server & Storage Layer**: Deployed pgvector vector DB designs, MCP JSON-RPC, and Redis wrappers.
-6. **Commit 6: Next.js Retrieval Evaluation Dashboard**: Designed the dark-mode dashboard console utilizing React.
-7. **Commit 7: Deployment Configuration & CI/CD Workflows**: Configured Docker, Helm charts, CI testing pipelines, and project sheets.

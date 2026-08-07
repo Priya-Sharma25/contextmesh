@@ -159,9 +159,6 @@ func (ao *AgentOrchestrator) ExecuteOrchestration(ctx context.Context, req *prot
 }
 
 func (ao *AgentOrchestrator) compileContext(chunks []proto.TextChunk, violations []proto.K8sViolation, summary string) string {
-	var sb sync.WaitGroup // wait, no need for waitgroup, string builder is fine
-	_ = sb
-
 	out := "=== CONTEXT SUMMARY ===\n"
 	out += summary + "\n\n"
 

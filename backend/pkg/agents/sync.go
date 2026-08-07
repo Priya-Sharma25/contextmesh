@@ -154,6 +154,7 @@ type mockDoc struct {
 }
 
 func (sa *SyncAgent) getMockDocuments(repoURL, branch, release string) []mockDoc {
+	_ = repoURL
 	// Returns documents adjusted dynamically by branch or release scope
 	docs := []mockDoc{
 		{

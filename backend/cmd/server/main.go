@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/Priyasharma620064/contextmesh/backend/pkg/agents"
@@ -24,6 +26,9 @@ type Server struct {
 	mcpServer    *mcp.McpServer
 	k8sIntel     *k8s.K8sIntelligence
 }
+
+// maxBodySize limits POST request bodies to 1MB to prevent OOM attacks.
+const maxBodySize = 1 << 20 // 1 MB
 
 func main() {
 	orchestrator := agents.NewAgentOrchestrator()
@@ -49,11 +54,25 @@ func main() {
 	// MCP Endpoint
 	mux.HandleFunc("/mcp", srv.handleMcpRequest)
 
-	// Wrap mux with standard CORS middleware
+	// Determine allowed CORS origins from environment (defaults to localhost:3000)
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:3000"
+	}
+	allowedOriginsSet := make(map[string]bool)
+	for _, origin := range strings.Split(allowedOrigins, ",") {
+		allowedOriginsSet[strings.TrimSpace(origin)] = true
+	}
+
+	// Wrap mux with configurable CORS middleware
 	corsMux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		requestOrigin := r.Header.Get("Origin")
+		if allowedOriginsSet[requestOrigin] {
+			w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Vary", "Origin")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -79,7 +98,7 @@ func (s *Server) handleParseConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := s.readBody(r)
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -111,7 +130,7 @@ func (s *Server) handleTriggerSync(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := s.readBody(r)
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -152,7 +171,7 @@ func (s *Server) handleQueryContext(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := s.readBody(r)
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -197,7 +216,7 @@ func (s *Server) handleValidateK8s(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := s.readBody(r)
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -256,7 +275,7 @@ func (s *Server) handleMcpRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(r.Body)
+	body, err := s.readBody(r)
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -287,4 +306,10 @@ func (s *Server) jsonError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// readBody reads the request body with a size limit to prevent OOM attacks.
+func (s *Server) readBody(r *http.Request) ([]byte, error) {
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
+	return io.ReadAll(r.Body)
 }
