@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -51,6 +51,15 @@ func main() {
 	mux.HandleFunc("/api/storage/schema", srv.handleGetStorageSchema)
 	mux.HandleFunc("/api/storage/stats", srv.handleGetStorageStats)
 	
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	
 	// MCP Endpoint
 	mux.HandleFunc("/mcp", srv.handleMcpRequest)
 
@@ -81,32 +90,22 @@ func main() {
 	})
 
 	port := ":8080"
-	log.Printf("----------------------------------------------------------------------")
-	log.Printf("🚀 ContextMesh Agentic Context Engineering Platform booting...")
-	log.Printf("🌐 Go Microservices engine running on port %s", port)
-	log.Printf("🛠️  MCP Tool Server enabled at http://localhost%s/mcp", port)
-	log.Printf("🤖 In-Memory storage initialized and preloaded with openkruise/kruise mock indices")
-	log.Printf("----------------------------------------------------------------------")
+	slog.Info("----------------------------------------------------------------------")
+	slog.Info("🚀 ContextMesh Agentic Context Engineering Platform booting...")
+	slog.Info("🌐 Go Microservices engine running on port " + port)
+	slog.Info("🛠️  MCP Tool Server enabled at http://localhost" + port + "/mcp")
+	slog.Info("🤖 In-Memory storage initialized and preloaded with openkruise/kruise mock indices")
+	slog.Info("----------------------------------------------------------------------")
 
 	if err := http.ListenAndServe(port, corsMux); err != nil {
-		log.Fatalf("Server shutdown failed: %v", err)
+		slog.Error("Server shutdown failed", "error", err)
+		os.Exit(1)
 	}
 }
 
 func (s *Server) handleParseConfig(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	body, err := s.readBody(r)
-	if err != nil {
-		s.jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	var req proto.ParseAgentsConfigRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.jsonError(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
+	if !s.parseRequest(w, r, &req) {
 		return
 	}
 
@@ -126,19 +125,8 @@ func (s *Server) handleParseConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTriggerSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	body, err := s.readBody(r)
-	if err != nil {
-		s.jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	var req proto.TriggerSyncRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.jsonError(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
+	if !s.parseRequest(w, r, &req) {
 		return
 	}
 
@@ -157,7 +145,7 @@ func (s *Server) handleTriggerSync(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetSyncStatus(w http.ResponseWriter, r *http.Request) {
 	repoURL := r.URL.Query().Get("repo")
 	if repoURL == "" {
-		repoURL = "https://github.com/Priyasharma620064/contextmesh" // default
+		repoURL = getDefaultRepo()
 	}
 
 	states := s.orchestrator.SyncAgent.GetSyncStatus(repoURL)
@@ -167,19 +155,8 @@ func (s *Server) handleGetSyncStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleQueryContext(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	body, err := s.readBody(r)
-	if err != nil {
-		s.jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	var req proto.QueryContextRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.jsonError(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
+	if !s.parseRequest(w, r, &req) {
 		return
 	}
 
@@ -212,19 +189,8 @@ func (s *Server) handleQueryContext(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleValidateK8s(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	body, err := s.readBody(r)
-	if err != nil {
-		s.jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	var req proto.ValidateK8sManifestRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.jsonError(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
+	if !s.parseRequest(w, r, &req) {
 		return
 	}
 
@@ -240,7 +206,7 @@ func (s *Server) handleRunBenchmark(w http.ResponseWriter, r *http.Request) {
 	repoURL := r.URL.Query().Get("repo")
 	branch := r.URL.Query().Get("branch")
 	if repoURL == "" {
-		repoURL = "https://github.com/Priyasharma620064/contextmesh"
+		repoURL = getDefaultRepo()
 	}
 	if branch == "" {
 		branch = "main"
@@ -298,7 +264,7 @@ func (s *Server) jsonSuccess(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Printf("Failed to encode JSON response: %v", err)
+		slog.Error("Failed to encode JSON response", "error", err)
 	}
 }
 
@@ -312,4 +278,30 @@ func (s *Server) jsonError(w http.ResponseWriter, msg string, code int) {
 func (s *Server) readBody(r *http.Request) ([]byte, error) {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
 	return io.ReadAll(r.Body)
+}
+
+func getDefaultRepo() string {
+	repo := os.Getenv("DEFAULT_REPO_URL")
+	if repo == "" {
+		return "https://github.com/Priyasharma620064/contextmesh"
+	}
+	return repo
+}
+
+// parseRequest is a helper that ensures method is POST, limits body size, and decodes JSON.
+func (s *Server) parseRequest(w http.ResponseWriter, r *http.Request, req interface{}) bool {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+	body, err := s.readBody(r)
+	if err != nil {
+		s.jsonError(w, err.Error(), http.StatusBadRequest)
+		return false
+	}
+	if err := json.Unmarshal(body, req); err != nil {
+		s.jsonError(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
+		return false
+	}
+	return true
 }

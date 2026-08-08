@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -239,7 +240,10 @@ Official release notes for the stable API. Fully compliant with Kubernetes v1.28
 }
 
 func (sa *SyncAgent) prepopulateMockKnowledge() {
-	defaultRepo := "https://github.com/Priyasharma620064/contextmesh"
+	defaultRepo := os.Getenv("DEFAULT_REPO_URL")
+	if defaultRepo == "" {
+		defaultRepo = "https://github.com/Priyasharma620064/contextmesh"
+	}
 
 	// Pre-parse the sample AGENTS.md we created earlier
 	sa.agentsConfig[defaultRepo] = &proto.AgentsConfig{

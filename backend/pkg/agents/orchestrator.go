@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Priyasharma620064/contextmesh/backend/pkg/pipeline"
 	"github.com/Priyasharma620064/contextmesh/backend/pkg/proto"
 )
 
@@ -15,6 +16,7 @@ type AgentOrchestrator struct {
 	Validator  *ValidationAgent
 	Summarizer *SummarizerAgent
 	SyncAgent  *SyncAgent
+	Compressor *pipeline.TokenCompressor
 }
 
 // NewAgentOrchestrator creates a new multi-agent orchestrator instance.
@@ -25,6 +27,7 @@ func NewAgentOrchestrator() *AgentOrchestrator {
 		Validator:  NewValidationAgent(),
 		Summarizer: NewSummarizerAgent(),
 		SyncAgent:  syncAgent,
+		Compressor: pipeline.NewTokenCompressor(),
 	}
 }
 
@@ -39,6 +42,7 @@ func (ao *AgentOrchestrator) ExecuteOrchestration(ctx context.Context, req *prot
 	var errMu sync.Mutex
 
 	var chunks []proto.TextChunk
+	var chunksMu sync.Mutex
 	var validationReports []proto.K8sViolation
 	var summaryText string
 
@@ -53,7 +57,9 @@ func (ao *AgentOrchestrator) ExecuteOrchestration(ctx context.Context, req *prot
 			errMu.Unlock()
 			return
 		}
+		chunksMu.Lock()
 		chunks = retrieved
+		chunksMu.Unlock()
 	}()
 
 	// 2. Wait for Retriever chunks because Validator and Summarizer depend on them
@@ -83,6 +89,11 @@ func (ao *AgentOrchestrator) ExecuteOrchestration(ctx context.Context, req *prot
 			OverallRelevanceScore: 0.0,
 		}, nil
 	}
+
+	chunksMu.Lock()
+	var compRatio float64
+	chunks, compRatio = ao.Compressor.Compress(chunks, req.MaxTokens)
+	chunksMu.Unlock()
 
 	// 3. Trigger Validation and Summarization in parallel based on chunks
 	var wgSecond sync.WaitGroup
@@ -147,7 +158,7 @@ func (ao *AgentOrchestrator) ExecuteOrchestration(ctx context.Context, req *prot
 
 	// Calculate tokens (rough estimates: 1 word = 1.3 tokens)
 	totalTokens := int32(len(compiledContext) / 4)
-	compRatio := float64(len(compiledContext)) / float64(ao.rawChunksLength(chunks)+1)
+	// compRatio is calculated by the Compressor earlier
 
 	return &proto.QueryContextResponse{
 		CompiledContext:       compiledContext,

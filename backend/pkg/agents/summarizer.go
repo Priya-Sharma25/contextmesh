@@ -26,7 +26,7 @@ func (sa *SummarizerAgent) SummarizeChunks(ctx context.Context, chunks []proto.T
 
 	// Group and compile citations
 	sourceMap := make(map[string][]string)
-	for idx, c := range chunks {
+	for _, c := range chunks {
 		citationLabel := fmt.Sprintf("CIT-%s (Lines %d-%d)", c.ID[:6], c.StartLine, c.EndLine)
 		sourceMap[c.Filepath] = append(sourceMap[c.Filepath], citationLabel)
 
@@ -34,7 +34,6 @@ func (sa *SummarizerAgent) SummarizeChunks(ctx context.Context, chunks []proto.T
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-		_ = idx
 	}
 
 	for path, citations := range sourceMap {

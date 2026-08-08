@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/Priyasharma620064/contextmesh/backend/pkg/proto"
@@ -150,13 +151,7 @@ func (ra *RetrieverAgent) getBigrams(s string) map[string]bool {
 }
 
 func (ra *RetrieverAgent) rerank(chunks []proto.TextChunk) {
-	// Simple bubble sort for descending order
-	n := len(chunks)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
-			if chunks[j].Score < chunks[j+1].Score {
-				chunks[j], chunks[j+1] = chunks[j+1], chunks[j]
-			}
-		}
-	}
+	sort.Slice(chunks, func(i, j int) bool {
+		return chunks[i].Score > chunks[j].Score
+	})
 }
